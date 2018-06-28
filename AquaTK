@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-from tkinter import Tk, Label, Button, Frame, PhotoImage, IntVar
+from tkinter import Tk, Label, Button, Frame, IntVar, PhotoImage
+
 from aquachain.aquatool import AquaTool
 from aquachain.aquakeys import Keystore
-from aquachaintk.scenes import StartPage, ThemedFrame
+from aquachaintk.scenes import StartPage, ThemedFrame, LogoPath
 from aquachaintk.scenes import PageNone, PageSend, PageAbout, PageReceive, PageWallets
 from aquachaintk.filterlooper import LogFilterLooper, LogQueue
 from datetime import datetime
 from aquachaintk.blockcache import BlockFormatter
-import os
 from argparse import ArgumentParser
 from aquachaintk.toolbar import Toolbar, NoButton
 
@@ -40,10 +40,7 @@ class Application(Tk):
         self.wm_geometry(newGeometry='800x400-100+100')
         self.version = 'Aquachain TK v0.0.3'
         self.configure(background='black')
-        scriptDir = os.path.dirname(__file__)
-        impath = os.path.join(scriptDir, 'aquachaintk', 'aquachain.png')
-        self.logo = PhotoImage(file=impath)
-
+        self.logo = PhotoImage(file=LogoPath)
         self.head_difficulty = IntVar()
         self.head_number = IntVar()
         self.head_timing = IntVar()
