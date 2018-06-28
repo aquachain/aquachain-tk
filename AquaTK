@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+from tkinter import Tk, Label, Button, Frame, PhotoImage, IntVar
+from aquachain.aquatool import AquaTool
+from aquachain.aquakeys import Keystore
+from aquachaintk.scenes import StartPage, ThemedFrame
+from aquachaintk.scenes import PageNone, PageSend, PageAbout, PageReceive, PageWallets
+from aquachaintk.filterlooper import LogFilterLooper, LogQueue
+from datetime import datetime
+from aquachaintk.blockcache import BlockFormatter
+import os
+from argparse import ArgumentParser
+from aquachaintk.toolbar import Toolbar, NoButton
+
+def get_default_keystore():
+    return '/home/user/.aquachain/aquakeys'
+DEFAULT_REFRESH_TIME=5
+DEFAULT_KEYSTORE_DIR=get_default_keystore()
+
+parser = ArgumentParser(description='Aquachain TK wallet', epilog='ONE of -r or -i flags must be set. Preferably -i because its faster and uses local node (with no http rpc) to learn more: https://aquachain.github.io')
+flag = parser.add_argument
+flag( '-r', '--rpchost', dest='rpchost', help='rpc host (with https:// prefix)')
+flag('-i', '--ipcpath',  dest='ipcpath', help='ipc path (filename)')
+flag( '-t', '--refresh', dest='refresh', type=int, default=DEFAULT_REFRESH_TIME, help=f'refresh rate (in seconds), default: {DEFAULT_REFRESH_TIME}')
+flag('-k', '--keystore', dest='keystore', default=DEFAULT_KEYSTORE_DIR, help=f'keystore directory, default: {DEFAULT_KEYSTORE_DIR}')
+ARGS = parser.parse_args()
+if ARGS.rpchost == None and ARGS.ipcpath == None:
+    print("Please select aquachain node to connect to with the '-r' OR '-i' flag (or -h for help)")
+    quit()
+if ARGS.rpchost != None and ARGS.ipcpath != None:
+    print("Please select ONE aquachain node to connect to with the '-r' OR '-i' flag (or -h for help)")
+    quit()
+
+def now():
+    return datetime.utcnow()
+
+class Application(Tk):
+    def __init__(self):
+        Tk.__init__(self)
+
+        self.wm_geometry(newGeometry='800x400-100+100')
+        self.version = 'Aquachain TK v0.0.3'
+        self.configure(background='black')
+        scriptDir = os.path.dirname(__file__)
+        impath = os.path.join(scriptDir, 'aquachaintk', 'aquachain.png')
+        self.logo = PhotoImage(file=impath)
+
+        self.head_difficulty = IntVar()
+        self.head_number = IntVar()
+        self.head_timing = IntVar()
+        self.head_timestamp = IntVar()
+        self.total_supply = IntVar()
+
+        self.head_difficulty.set(0)
+        self.head_number.set(0)
+        self.head_timing.set(0)
+        self.head_timestamp.set(0)
+        self.total_supply.set(0)
+
+        # connect to aquachain node
+        self.aqua = None
+        if ARGS.rpchost == None:
+            self.aqua = AquaTool(ipcpath=ARGS.ipcpath)
+        else:
+            self.aqua = AquaTool(rpchost=ARGS.rpchost)
+
+        # get latest block from aquachain node
+        self.head = self.aqua.gethead()
+        self.rehead()
+
+        # keys
+        self.keystore = Keystore(directory=ARGS.keystore)
+        self.hdkeys = []
+        self.addresses = []
+
+        # start new-block filter
+        self.queue = LogQueue()
+        event_filter = self.aqua.w3.eth.filter('latest')
+        self.looper = LogFilterLooper(self, self.queue, event_filter, ARGS.refresh, aqua=self.aqua)
+        self.looper.start()
+
+        # TK
+        self._mainframe = Frame(self, background='green')
+        self._mainframe.pack(side='top', anchor='n', expand=True, fill='both')
+        self._framename = ''
+
+
+        self.buttons = btns = {
+            'Quit': NoButton(text='Quit',
+                command=self.quit, width=13),
+            'Lock': NoButton(text='Lock',
+                command=self.lock, width=13),
+            'PageWallets': NoButton(text='Wallets',
+                command=self.switch_frame, arg=PageWallets, width=13),
+            'PageAbout': NoButton(text='About',
+                command=self.switch_frame, arg=PageAbout, width=13),
+            'PageAbout': NoButton(text='Recv',
+                command=self.switch_frame, arg=PageReceive, width=13),
+        }
+        self._toolbar = Toolbar(self._mainframe, app=self, logo=self.logo)
+        self._toolbar.addbtns(btns)
+        self._toolbar.grid(sticky='nw', columnspan=1, column=0, row=0)
+
+        # take it away
+        # self._leftcol = Frame(self, background='blue')
+        self._frame = ThemedFrame(self._mainframe, app=self, background='teal', height='100')
+
+        self.homepage()
+
+    # def keygen(self):
+    #     from tkinter import messagebox
+    #     if messagebox.askokcancel(title='Generate New Key', message='You sure you want to generate a new key and save to disk?'):
+    #         self.keystore.save_phrase(self.aqua.generate_phrase())
+    #         self.switch_frame(PageWallets)
+    #     else:
+    #         print('cancled keygen')
+
+    def lock(self):
+        print('LOCKING WALLET')
+        self.hdkeys.clear()
+        self.addresses.clear()
+        print('SHOULD BE EMPTY:', self.hdkeys)
+        self.homepage()
+
+    def rehead(self):
+        print('new head block:', BlockFormatter(self.head))
+        self.head_number.set(int(self.head['number'], 16))
+        self.head_difficulty.set(int(self.head['difficulty'], 16))
+        timestamp = int(self.head['timestamp'], 16)
+        last = self.head_timestamp.get()
+        if last == 0:
+            last = int(self.aqua.getblockbyhash(self.head['parentHash'])['timestamp'], 16)
+        self.head_timing.set(timestamp-last)
+        self.head_timestamp.set(timestamp)
+        if ARGS.ipcpath != None:
+            self.total_supply.set(self.aqua.from_wei(int(self.aqua.Result('admin_supply', []), 16)))
+    def homepage(self):
+        # self.switch_frame(/StartPage)
+        self.switch_frame(StartPage)
+    def switch_frame(self, frame_class):
+        """Destroys current frame and replaces it with a new one."""
+        self._framename = frame_class.__name__
+        new_frame = frame_class(parent=self._mainframe,app=self)
+        if self._frame is not None:
+            print('deleting:',self._frame)
+            self._frame.destroy()
+        self._frame = new_frame
+        self._frame.grid(sticky='ne',ipadx=100, column=1, row=0)
+        print('switchin to framename:', self._framename)
+
+
+
+if __name__ == "__main__":
+    app = None
+    try:
+        app = Application()
+        app.mainloop()
+    except Exception as e:
+        print('fatality:', e)
+        # if not app is None:
+        if app:
+            print('got killed, stopping log filter thread')
+            app.looper.stop()
+        raise e
+    if app not in [None]:
+        print('stopping log filter thread')
+        app.looper.stop()
+    print("Have a nice day!")
