@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from setuptools import setup
-version = '0.0.1'
+version = '0.0.3'
 setup(
     install_requires = ['aquachain.py'],
     data_files = [('aquachaintk', ['aquachaintk/aquachain.png'])],
@@ -9,7 +9,7 @@ setup(
     url='https://github.com/aquachain/aquachain-tk',
     packages = ['aquachaintk'],
     version=version,
-    scripts = ['AquaTK'],
+    scripts = ['aquachain-tk'],
     description='Aquachain TK wallet for Python 3.6.5',
     long_description='Aquachain TK wallet for Python 3.6.5 -- See https://github.com/aquachain/aquachain.py or https://aquachain.github.io for more information.',
     author='Aquachain Authors',
