@@ -1,30 +1,23 @@
-from tkinter import Frame, Canvas, Label, Text, Button, Entry, messagebox
+#!/usr/bin/env python3
+'''
+scenes.py unique to this project
+'''
+from tkinter import Frame, Canvas, Text, messagebox
 from aquachaintk.toolbar import Toolbar, NoButton
 from aquachaintk.vsframe import VSFrame
+from aquachaintk.themed import ThemedFrame, ThemedLabel, ThemedButton, ThemedEntry
+
 import os
 scriptDir = os.path.dirname(__file__)
 LogoPath = os.path.join(scriptDir, 'aquachain.png')
 
-
 lorem='Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'
-
-class ThemedFrame(Frame):
-    def __init__(self, parent, app=None, *args, **kw):
-        Frame.__init__(self, parent, *args, **kw)
-        self.app = app
-        self._container = VSFrame(self)
-        self.container = self._container.interior
-        self._container.pack(side='top', fill='both', expand=True)
-        # self._populate_dummybuttons(100)
-    # def _populate_dummybuttons(self, lim):
-    #     for i in range(lim):
-    #         NoButton(text='a %d' % i).Btn(self.container).pack()
 
 class StartPage(ThemedFrame):
     def __init__(self, app=None, *args, **kw):
         ThemedFrame.__init__(self, app=app, *args, **kw)
-        ThemedLabel(self.container, text='lol StartPage').pack()
-        ThemedLabel(self.container, text='lol cool').pack()
+        ThemedLabel(self.container, text='Aquachain TK', fontsize=24).pack()
+        ThemedLabel(self.container, text='https://github.com/aquachain').pack()
 
 class PageNone(ThemedFrame):
     def __init__(self, app=None, *args, **kw):
@@ -44,16 +37,29 @@ class PageAbout(ThemedFrame):
 class PageWallets(ThemedFrame):
     def __init__(self, app=None, *args, **kw):
         ThemedFrame.__init__(self, app=app, *args, **kw)
-        ThemedLabel(self.container, text='lol PageWallets').pack()
-        Button(self, text='Load Phrases', command=self.load_wallets).pack(side='right')
-        Button(self, text='Generate New Phrase', command=self.keygen).pack(side='right')
-        Button(self, text='Import Existing Phrase', command=self.getkey).pack(side='right')
-        self.seedentry = Entry(self, text='')
-        self.seedentry.pack(side='right')
+        ThemedLabel(self.container, text='Aquachain Wallets').pack()
+        self.brow1 = Frame(self, bg='black')
+
+        self.brow2 = Frame(self, bg='black')
+        self.brow2.pack(side='top', fill='x')
+
+        ThemedLabel(self.container, text='Password for unlock phrase', fontsize=12).pack(side='top', fill='x')
+        self.pwentry = ThemedEntry(self.container, show='*', fontsize=12)
+        self.pwentry.pack(side='bottom', fill='x')
+        if not app is None:
+            ThemedButton(self.brow1, text='Lock Wallets', command=app.lock).pack(anchor='w', side='left')
+        ThemedButton(self.brow1, text='Load Phrases', command=self.load_wallets).pack(anchor='w', side='left')
+        ThemedButton(self.brow1, text='Generate New Phrase', command=self.keygen).pack(anchor='w', side='left')
+        ThemedButton(self.brow1, text='Import Existing Phrase', command=self.get_phrase_entry).pack(anchor='w', side='left')
+        self.brow1.pack(side='top', fill='x')
+	
+        self.seedentry = ThemedEntry(self.brow2, text='', fontsize=12)
+        self.seedentry.pack(side='top', fill='x')
         self.btnframe = Frame(self.container)
         self.btnframe.pack()
+        self.reload()
 
-    def getkey(self):
+    def get_phrase_entry(self):
         phrase = self.seedentry.get().strip()
         l = len(phrase.strip().split(' '))
         try:
@@ -64,27 +70,37 @@ class PageWallets(ThemedFrame):
         except ValueError as e:
             messagebox.showerror(message=f'{e}')
 
-
     def load_wallets(self):
         print('loading wallets')
+        btnpack = Frame(self.container, background='aqua')
+        btnpack.pack(side='top')
+        column = -1
+        row = 0
         for i in self.app.keystore.listphrases():
+            column += 1
+            if column > 3:
+                column = 0
+                row += 1
             action = lambda x = i: self.unlockphrase(x)
-            Button(self.container, text='unlock: ' + i.split(' ')[0], command=action).pack()
+            ThemedButton(btnpack, text='unlock: ' + i.split(' ')[0], command=action).grid(column=column, row=row)
 
     def unlockphrase(self, phrase):
         print('unlock phrase')
-        self.app.hdkeys.append(self.app.keystore.load_phrase(phrase, ''))
+        pw = self.pwentry.get()
+        self.app.hdkeys.append(self.app.keystore.load_phrase(phrase, pw))
         self.reload()
 
     def reload(self):
         if self.app and hasattr(self.app, 'hdkeys'):
+#            for i in self.btnframe.pack_slaves():
+#                i.destroy()
             for i in range(len(self.app.hdkeys)):
                 for y in range(10):
                     address = self.app.keystore.from_parent_key(self.app.hdkeys[i], y)._key.public_key.address()
                     bal = self.app.aqua.getbalance(address)
                     fmt = '%s: %s'  % (address, bal)
                     action = lambda x = [i, y]: self.paywindow(x)
-                    NoButton(text=fmt, command=action).Btn(self.btnframe).pack()
+                    NoButton(text=fmt, command=action).Btn(self.btnframe).pack(side='top')
 
 
     def keygen(self):
@@ -106,12 +122,12 @@ class PageWallets(ThemedFrame):
             i.destroy()
         ThemedLabel(self.container, text=fmt, font=('verdana', 24)).pack()
         action = lambda: self.app.switch_frame(PageWallets)
-        Button(self.container, text='return', command=action).pack(side='left')
-        Button(self.container, text='lock wallets', command=self.app.lock).pack(side='left')
+        ThemedButton(self.container, text='return', command=action).pack(side='left')
+        ThemedButton(self.container, text='lock wallets', command=self.app.lock).pack(side='left')
 
-        _dest = Entry(self.container, text='Destination Address')
-        _val = Entry(self.container, text='Amount (in AQUA)')
-        _gasprice = Entry(self.container, text='Gas Price (in GWEI)')
+        _dest = ThemedEntry(self.container, text='Destination Address')
+        _val = ThemedEntry(self.container, text='Amount (in AQUA)')
+        _gasprice = ThemedEntry(self.container, text='Gas Price (in GWEI)')
 
         ThemedLabel(self.container, text='Destination Address').pack(side='top')
         _dest.pack(side='top')
@@ -148,13 +164,6 @@ class PageWallets(ThemedFrame):
             print(tx_hash)
             messagebox.showinfo(message=f'Sent: {tx_hash}')
 
-
-
-class PageSend(ThemedFrame):
-    def __init__(self, app=None, *args, **kw):
-        ThemedFrame.__init__(self, app=app, *args, **kw)
-        ThemedLabel(self.container, text='lol cokdsfkdjsfdskfjol').pack()
-
 class PageReceive (ThemedFrame):
     def __init__(self, app=None, *args, **kw):
         ThemedFrame.__init__(self, app=app, *args, **kw)
@@ -185,8 +194,8 @@ class PageReceive (ThemedFrame):
         t.insert('1.0', fmt)
         t.pack()
 
-
-class ThemedLabel(Label):
-    def __init__(self, master=None, cnf={}, **kw):
-        Label.__init__(self, master=master, cnf=cnf, **kw)
-        self.configure(bg='black', fg='teal', font=('verdana', 8))
+if __name__ == '__main__':
+    from aquachaintk.testapp import TestApplication
+    win = TestApplication()
+    win.switch_frame(StartPage)
+    win.mainloop()

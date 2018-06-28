@@ -1,24 +1,21 @@
-from tkinter import Frame, Scrollbar, Canvas, VERTICAL, RIGHT, Y, LEFT, FALSE, TRUE, BOTH, N, W, E, S, NE, SE, NW, SW
-# from ttk import *
-
+#!/usr/bin/env python3
+from tkinter import Frame, Scrollbar, Canvas
 # http://tkinter.unpythonic.net/wiki/VerticalScrolledFrame
-
 class VSFrame(Frame):
     """A pure Tkinter scrollable frame that actually works!
     * Use the 'interior' attribute to place widgets inside the scrollable frame
     * Construct and pack/place/grid normally
     * This frame only allows vertical scrolling
-
     """
     def __init__(self, parent, *args, **kw):
         Frame.__init__(self, parent, *args, **kw)
 
         # create a canvas object and a vertical scrollbar for scrolling it
-        vscrollbar = Scrollbar(self, orient=VERTICAL)
-        vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
+        vscrollbar = Scrollbar(self, orient='vertical')
+        vscrollbar.pack(fill='y', side='right', expand=False)
         canvas = Canvas(self, bd=0, highlightthickness=0,
-                        yscrollcommand=vscrollbar.set)
-        canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
+                        yscrollcommand=vscrollbar.set, bg='black')
+        canvas.pack(side='left', fill='both' , expand=True)
         vscrollbar.config(command=canvas.yview)
 
         # reset the view
@@ -28,7 +25,7 @@ class VSFrame(Frame):
         # create a frame inside the canvas which will be scrolled with it
         self.interior = interior = Frame(canvas, bg='black')
         interior_id = canvas.create_window(0, 0, window=interior,
-                                           anchor=NW)
+                                           anchor='nw')
 
         # track changes to the canvas and frame width and sync them,
         # also updating the scrollbar
@@ -46,3 +43,13 @@ class VSFrame(Frame):
                 # update the inner frame's width to fill the canvas
                 canvas.itemconfigure(interior_id, width=canvas.winfo_width())
         canvas.bind('<Configure>', _configure_canvas)
+
+if __name__ == '__main__':
+    from tkinter import Tk, Button
+    win = Tk()
+    vsframe = VSFrame(win)
+    vsframe.pack(side='top', fill='both', expand=True)
+    f = vsframe.interior
+    for i in range(20):
+        Button(f, width=100, font=('verdana', 6), bg='black', fg='teal', text=f'btn #{i}').pack()
+    win.mainloop()

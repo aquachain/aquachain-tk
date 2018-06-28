@@ -4,17 +4,43 @@ from tkinter import Tk, Label, Button, Frame, IntVar, PhotoImage
 from aquachain.aquatool import AquaTool
 from aquachain.aquakeys import Keystore
 from aquachaintk.scenes import StartPage, ThemedFrame, LogoPath
-from aquachaintk.scenes import PageNone, PageSend, PageAbout, PageReceive, PageWallets
+from aquachaintk.scenes import PageNone, PageAbout, PageReceive, PageWallets
 from aquachaintk.filterlooper import LogFilterLooper, LogQueue
 from datetime import datetime
 from aquachaintk.blockcache import BlockFormatter
 from argparse import ArgumentParser
 from aquachaintk.toolbar import Toolbar, NoButton
+import os
 
-def get_default_keystore():
-    return '/home/user/.aquachain/aquakeys'
+def default_keystore_dir():
+    import sys
+    data_dir = 'aquakeys'
+    if sys.platform == 'darwin':
+        data_dir = os.path.expanduser(os.path.join(
+            "~",
+            "Library",
+            "AquaChain",
+            "aquakeys",
+        ))
+    elif sys.platform in {'linux', 'linux2', 'linux3'}:
+        data_dir = os.path.expanduser(os.path.join(
+            "~",
+            ".aquachain",
+            "aquakeys",
+        ))
+    elif sys.platform == 'win32':
+        data_dir = os.path.expanduser(os.path.join(
+            "\\",
+            "~",
+            "AppData",
+            "Roaming",
+            "AquaChain",
+            "aquakeys",
+        ))
+    return data_dir
+
 DEFAULT_REFRESH_TIME=5
-DEFAULT_KEYSTORE_DIR=get_default_keystore()
+DEFAULT_KEYSTORE_DIR=default_keystore_dir()
 
 parser = ArgumentParser(description='Aquachain TK wallet', epilog='ONE of -r or -i flags must be set. Preferably -i because its faster and uses local node (with no http rpc) to learn more: https://aquachain.github.io')
 flag = parser.add_argument
@@ -37,7 +63,7 @@ class Application(Tk):
     def __init__(self):
         Tk.__init__(self)
 
-        self.wm_geometry(newGeometry='800x400-100+100')
+        # self.wm_geometry(newGeometry='800x400-100+100')
         self.version = 'Aquachain TK v0.0.3'
         self.configure(background='black')
         self.logo = PhotoImage(file=LogoPath)
@@ -90,17 +116,16 @@ class Application(Tk):
                 command=self.switch_frame, arg=PageWallets, width=13),
             'PageAbout': NoButton(text='About',
                 command=self.switch_frame, arg=PageAbout, width=13),
-            'PageAbout': NoButton(text='Recv',
+            'PageReceive': NoButton(text='Recv',
                 command=self.switch_frame, arg=PageReceive, width=13),
         }
         self._toolbar = Toolbar(self._mainframe, app=self, logo=self.logo)
         self._toolbar.addbtns(btns)
         self._toolbar.grid(sticky='nw', columnspan=1, column=0, row=0)
 
-        # take it away
-        # self._leftcol = Frame(self, background='blue')
         self._frame = ThemedFrame(self._mainframe, app=self, background='teal', height='100')
 
+        # take it away
         self.homepage()
 
     # def keygen(self):
@@ -143,7 +168,6 @@ class Application(Tk):
         self._frame = new_frame
         self._frame.grid(sticky='ne',ipadx=100, column=1, row=0)
         print('switchin to framename:', self._framename)
-
 
 
 if __name__ == "__main__":
